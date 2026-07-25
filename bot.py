@@ -1,14 +1,16 @@
-import asyncio
-from embeds import account_embed, stock_embed
 import discord
 from discord import app_commands
+
 from dotenv import load_dotenv
+
 import os
+import asyncio
 
 import database
 
 from permissions import is_admin
-from embeds import account_embed
+from embeds import account_embed, stock_embed
+
 
 
 load_dotenv()
@@ -16,13 +18,20 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
 
+
 intents = discord.Intents.default()
+
 
 bot = discord.Client(
     intents=intents
 )
 
+
 tree = app_commands.CommandTree(bot)
+
+
+stock_message = None
+
 
 
 @bot.event
@@ -32,17 +41,59 @@ async def on_ready():
 
     await tree.sync()
 
-    print(f"Prisijungta kaip {bot.user}")
+    bot.loop.create_task(
+        update_stock()
+    )
+
+    print(
+        f"Prisijungta: {bot.user}"
+    )
+
+
+
+async def update_stock():
+
+    global stock_message
+
+
+    while True:
+
+
+        if stock_message:
+
+
+            embed = stock_embed(
+
+                database.get_stock("fivem"),
+
+                database.get_stock("discord"),
+
+                database.get_stock("steam")
+
+            )
+
+
+            await stock_message.edit(
+                embed=embed
+            )
+
+
+        await asyncio.sleep(30)
+
+
 
 
 async def send_accounts(interaction, account_type, amount):
+
 
     accounts = database.get_accounts(
         account_type,
         amount
     )
 
-    if len(accounts) == 0:
+
+    if not accounts:
+
 
         await interaction.response.send_message(
             "❌ Nėra laisvų paskyrų.",
@@ -50,6 +101,7 @@ async def send_accounts(interaction, account_type, amount):
         )
 
         return
+
 
 
     embed = account_embed(
@@ -65,18 +117,11 @@ async def send_accounts(interaction, account_type, amount):
 
 
 
-# =========================
-# GET ACCOUNTS
-# =========================
 
-
-@tree.command(
-    name="fivem",
-    description="Gauti FiveM paskyras"
-)
+@tree.command(name="fivem")
 async def fivem(
     interaction: discord.Interaction,
-    kiekis: int
+    kiekis:int
 ):
 
     if await is_admin(interaction):
@@ -89,13 +134,11 @@ async def fivem(
 
 
 
-@tree.command(
-    name="discord",
-    description="Gauti Discord paskyras"
-)
+
+@tree.command(name="discord")
 async def discord_accounts(
     interaction: discord.Interaction,
-    kiekis: int
+    kiekis:int
 ):
 
     if await is_admin(interaction):
@@ -108,13 +151,11 @@ async def discord_accounts(
 
 
 
-@tree.command(
-    name="steam",
-    description="Gauti Steam paskyras"
-)
+
+@tree.command(name="steam")
 async def steam(
     interaction: discord.Interaction,
-    kiekis: int
+    kiekis:int
 ):
 
     if await is_admin(interaction):
@@ -127,19 +168,12 @@ async def steam(
 
 
 
-# =========================
-# ADD ACCOUNTS
-# =========================
 
-
-@tree.command(
-    name="addfivem",
-    description="Pridėti FiveM paskyrą"
-)
+@tree.command(name="addfivem")
 async def addfivem(
-    interaction: discord.Interaction,
-    login: str,
-    password: str
+    interaction:discord.Interaction,
+    login:str,
+    password:str
 ):
 
     if await is_admin(interaction):
@@ -150,46 +184,20 @@ async def addfivem(
             password
         )
 
+
         await interaction.response.send_message(
-            "✅ FiveM paskyra pridėta.",
+            "✅ FiveM pridėta.",
             ephemeral=True
         )
 
 
 
-@tree.command(
-    name="addsteam",
-    description="Pridėti Steam paskyrą"
-)
-async def addsteam(
-    interaction: discord.Interaction,
-    login: str,
-    password: str
-):
 
-    if await is_admin(interaction):
-
-        database.add_account(
-            "steam",
-            login,
-            password
-        )
-
-        await interaction.response.send_message(
-            "✅ Steam paskyra pridėta.",
-            ephemeral=True
-        )
-
-
-
-@tree.command(
-    name="adddiscord",
-    description="Pridėti Discord paskyrą"
-)
+@tree.command(name="adddiscord")
 async def adddiscord(
-    interaction: discord.Interaction,
-    login: str,
-    password: str
+    interaction:discord.Interaction,
+    login:str,
+    password:str
 ):
 
     if await is_admin(interaction):
@@ -200,58 +208,68 @@ async def adddiscord(
             password
         )
 
+
         await interaction.response.send_message(
-            "✅ Discord paskyra pridėta.",
+            "✅ Discord pridėta.",
             ephemeral=True
         )
 
 
 
-# =========================
-# STOCK
-# =========================
 
-
-@tree.command(
-    name="stock",
-    description="Parodyti paskyrų kiekį"
-)
-async def stock(
-    interaction: discord.Interaction
+@tree.command(name="addsteam")
+async def addsteam(
+    interaction:discord.Interaction,
+    login:str,
+    password:str
 ):
 
     if await is_admin(interaction):
 
-        embed = discord.Embed(
-            title="📦 Account Stock",
-            color=discord.Color.blue()
+        database.add_account(
+            "steam",
+            login,
+            password
         )
 
 
-        embed.add_field(
-            name="🟢 FiveM",
-            value=f"`{database.get_stock('fivem')}`",
-            inline=False
+        await interaction.response.send_message(
+            "✅ Steam pridėta.",
+            ephemeral=True
         )
 
 
-        embed.add_field(
-            name="🟣 Discord",
-            value=f"`{database.get_stock('discord')}`",
-            inline=False
-        )
 
 
-        embed.add_field(
-            name="🟠 Steam",
-            value=f"`{database.get_stock('steam')}`",
-            inline=False
+
+@tree.command(name="stock")
+async def stock(
+    interaction:discord.Interaction
+):
+
+    global stock_message
+
+
+    if await is_admin(interaction):
+
+
+        embed = stock_embed(
+
+            database.get_stock("fivem"),
+
+            database.get_stock("discord"),
+
+            database.get_stock("steam")
+
         )
 
 
         await interaction.response.send_message(
             embed=embed
         )
+
+
+        stock_message = await interaction.original_response()
 
 
 
