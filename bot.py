@@ -1,3 +1,5 @@
+import asyncio
+from embeds import account_embed, stock_embed
 import discord
 from discord import app_commands
 from dotenv import load_dotenv
