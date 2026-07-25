@@ -14,9 +14,9 @@ def setup():
     c.execute("""
     CREATE TABLE IF NOT EXISTS accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT,
-        login TEXT,
-        password TEXT,
+        type TEXT NOT NULL,
+        login TEXT NOT NULL,
+        password TEXT NOT NULL,
         used INTEGER DEFAULT 0
     )
     """)
@@ -25,40 +25,46 @@ def setup():
     db.close()
 
 
-def add_account(type, login, password):
+def add_account(account_type, login, password):
     db = connect()
     c = db.cursor()
 
     c.execute(
-        "INSERT INTO accounts(type,login,password) VALUES(?,?,?)",
-        (type, login, password)
+        """
+        INSERT INTO accounts(type, login, password)
+        VALUES (?, ?, ?)
+        """,
+        (account_type, login, password)
     )
 
     db.commit()
     db.close()
 
 
-def get_accounts(type, amount):
-
+def get_accounts(account_type, amount):
     db = connect()
     c = db.cursor()
 
     c.execute(
         """
-        SELECT id,login,password 
+        SELECT id, login, password
         FROM accounts
         WHERE type=? AND used=0
         LIMIT ?
         """,
-        (type, amount)
+        (account_type, amount)
     )
 
     accounts = c.fetchall()
 
-    for acc in accounts:
+    for account in accounts:
         c.execute(
-            "UPDATE accounts SET used=1 WHERE id=?",
-            (acc[0],)
+            """
+            UPDATE accounts
+            SET used=1
+            WHERE id=?
+            """,
+            (account[0],)
         )
 
     db.commit()
@@ -67,18 +73,42 @@ def get_accounts(type, amount):
     return accounts
 
 
-def stock(type):
-
+def get_stock(account_type):
     db = connect()
     c = db.cursor()
 
     c.execute(
-        "SELECT COUNT(*) FROM accounts WHERE type=? AND used=0",
-        (type,)
+        """
+        SELECT COUNT(*)
+        FROM accounts
+        WHERE type=? AND used=0
+        """,
+        (account_type,)
     )
 
-    result = c.fetchone()[0]
+    amount = c.fetchone()[0]
 
     db.close()
 
-    return result
+    return amount
+
+
+def add_many(accounts):
+    db = connect()
+    c = db.cursor()
+
+    for account in accounts:
+        c.execute(
+            """
+            INSERT INTO accounts(type, login, password)
+            VALUES (?, ?, ?)
+            """,
+            (
+                account["type"],
+                account["login"],
+                account["password"]
+            )
+        )
+
+    db.commit()
+    db.close()
